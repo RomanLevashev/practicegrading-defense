@@ -1,0 +1,43 @@
+\usepackage{beamerthemesplit}
+\usetheme{SPbGU}
+\beamertemplatenavigationsymbolsempty
+
+\usepackage{fontspec}
+\setmainfont{FreeSerif}
+\setsansfont{FreeSans}
+\setmonofont{DejaVu Sans Mono}
+
+\usepackage{polyglossia}
+\setdefaultlanguage{russian}
+\setotherlanguage{english}
+\usepackage[autostyle]{csquotes}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+
+\definecolor{pgGreen}{RGB}{47,126,74}
+\definecolor{pgRed}{RGB}{174,55,55}
+\definecolor{pgBlue}{RGB}{46,89,142}
+\definecolor{pgGray}{RGB}{245,245,245}
+
+\tikzset{
+  pgstep/.style={
+    draw=pgBlue,
+    rounded corners=2pt,
+    fill=pgGray,
+    align=center,
+    minimum height=1.15cm,
+    text width=2.25cm,
+    font=\small
+  },
+  pgarrow/.style={-{Latex[length=2.5mm]}, thick, draw=pgBlue},
+  pgcomponent/.style={
+    draw=pgGreen,
+    rounded corners=2pt,
+    fill=pgGreen!7,
+    align=center,
+    minimum height=0.9cm,
+    text width=2.5cm,
+    font=\small
+  }
+}

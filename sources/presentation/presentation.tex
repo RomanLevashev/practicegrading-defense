@@ -1,0 +1,245 @@
+\documentclass[aspectratio=169]{beamer}
+
+\input{preamble.tex}
+
+\title[Развитие PracticeGrading]{Сопровождение и развитие системы PracticeGrading}
+\institute[СПбГУ]{}
+\author[Левашев Роман]{Левашев Роман Владимирович, группа 24.Б44-мм}
+\date{}
+
+\begin{document}
+
+{
+\setbeamertemplate{footline}{}
+\begin{frame}
+  \includegraphics[width=1.35cm]{pictures/SPbGU_Logo.png}
+  \vspace{-34pt}
+  \hspace{-8pt}
+  \begin{center}
+    \begin{tabular}{c}
+      \scriptsize Санкт-Петербургский государственный университет \\
+      \scriptsize Кафедра системного программирования
+    \end{tabular}
+    \titlepage
+  \end{center}
+
+  \btVFill
+
+  {\scriptsize
+    \textbf{Научный руководитель:} к.~т.~н. Ю.~В.~Литвинов,
+    старший преподаватель кафедры системного программирования \\
+    \textbf{Консультант:} М.~Г.~Мясникова,
+    инженер-программист АО \enquote{Нэксайн}
+  }
+
+  \begin{center}
+    \vspace{5pt}
+    \scriptsize Санкт-Петербург\\2026
+  \end{center}
+\end{frame}
+}
+
+\begin{frame}{PracticeGrading и исходные проблемы}
+  \textbf{Назначение системы}
+
+  PracticeGrading используется при проведении защит учебных практик.
+  Система хранит сведения о студентах и работах, принимает оценки
+  членов комиссии и рассчитывает рекомендуемый результат.
+
+  \vspace{0.8em}
+  \textbf{Исходные проблемы}
+
+  \begin{itemize}
+    \item Нового администратора приходилось добавлять вручную
+      через базу данных
+    \item Участник мог представиться другим членом комиссии
+      и выставлять оценки от его имени
+    \item Обновление приложения на рабочем сервере выполнялось вручную
+      и зависело от действий администратора сервера
+  \end{itemize}
+\end{frame}
+\begin{frame}{Аналоги и выбранный подход}
+  \begin{itemize}
+    \item Для оценивания студенческих работ могут использоваться
+      образовательные платформы, например Moodle и Canvas
+    \item Они позволяют работать с заданиями, критериями и оценками,
+      однако ориентированы на общий процесс обучения
+    \item Порядок проведения защит, состав и полномочия комиссии,
+      а также правила расчёта результата различаются между вузами
+      и образовательными программами
+    \item Поэтому выбрано развитие PracticeGrading, уже учитывающего
+      принятый в СПбГУ порядок проведения защит и оценивания работ
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Постановка задачи}
+  \textbf{Цель работы} --- повысить безопасность PracticeGrading
+  и автоматизировать выпуск новых версий.
+
+  \vspace{1em}
+  \textbf{Задачи}
+  \begin{itemize}
+    \item Добавить создание администраторов и смену пароля
+    \item Реализовать безопасный доступ членов комиссии к оцениванию
+    \item Реализовать Continuous Deployment
+    \item Настроить ежедневное резервное копирование базы данных
+    \item Добавить автоматические тесты
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Управление администраторами}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Создание администратора}
+      \begin{itemize}
+        \item Доступно авторизованному администратору
+        \item Учётная запись создаётся через интерфейс приложения
+        \item Ручное редактирование базы не требуется
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Смена пароля}
+      \begin{itemize}
+        \item Пользователь указывает текущий пароль
+        \item Сервер проверяет новый пароль и сохраняет его хеш
+        \item Ошибки возвращаются без изменения учётной записи
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vfill
+  \centering
+  Операции защищены серверной проверкой роли пользователя
+\end{frame}
+
+\begin{frame}{Доступ членов комиссии}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \textbf{Подтверждаемый доступ}
+      \begin{enumerate}
+        \item Участник открывает ссылку на заседание
+        \item Отправляет запрос от своего имени
+        \item Запрос подтверждает участник с доступом
+        \item Участник получает право выставлять оценки
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \textbf{Доверенный доступ}
+      \begin{enumerate}
+        \item Администратор выдаёт персональную ссылку
+        \item Участник один раз активирует доступ
+        \item Ссылки на заседания открываются без подтверждения
+        \item При необходимости участник добавляется в комиссию автоматически
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+
+  \vfill
+  \centering
+  Доверенный доступ можно перевыпустить или отозвать.
+  Старый токен перестаёт действовать
+\end{frame}
+
+\begin{frame}{Архитектура Continuous Deployment}
+  \centering
+  \begin{tikzpicture}[node distance=0.45cm]
+    \node[pgstep] (push) {Push в ветку\\\texttt{main}};
+    \node[pgstep, right=of push] (ci) {Сборка\\и тесты};
+    \node[pgstep, right=of ci] (package) {Образ API\\и artifact};
+    \node[pgstep, right=of package] (runner) {Self-hosted\\runner};
+    \node[pgstep, right=of runner] (deploy) {Deploy-\\скрипт};
+
+    \draw[pgarrow] (push) -- (ci);
+    \draw[pgarrow] (ci) -- (package);
+    \draw[pgarrow] (package) -- (runner);
+    \draw[pgarrow] (runner) -- (deploy);
+
+    \node[pgcomponent, below=1.25cm of ci] (db) {PostgreSQL\\SQL-миграции};
+    \node[pgcomponent, below=1.25cm of package] (api) {Docker Compose\\API};
+    \node[pgcomponent, below=1.25cm of runner] (front) {Nginx\\frontend};
+
+    \coordinate[below=0.62cm of deploy] (branch);
+    \draw[thick, draw=pgBlue] (deploy.south) -- (branch);
+    \draw[pgarrow] (branch) -| (db.north);
+    \draw[pgarrow] (branch) -| (api.north);
+    \draw[pgarrow] (branch) -| (front.north);
+  \end{tikzpicture}
+
+  \vfill
+  \small
+  Образ API и каталог frontend связаны с идентификатором коммита.
+\end{frame}
+
+\begin{frame}{Развёртывание и полный откат}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Успешный выпуск}
+      \begin{enumerate}
+        \item Включается режим обслуживания
+        \item Создаётся копия базы для отката
+        \item Применяются новые SQL-миграции
+        \item Запускается новый образ API
+        \item После liveness-проверки переключается frontend
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Ошибка в изменяющей части}
+      \begin{enumerate}
+        \item Останавливается новая версия API
+        \item Восстанавливается база из созданной копии
+        \item Возвращаются прежние образ API и frontend
+        \item Проверяется доступность приложения
+        \item При успешном откате снимается режим обслуживания
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Резервное копирование}
+  \begin{itemize}
+    \item Systemd ежедневно запускает скрипт резервного копирования
+    \item Скрипт создаёт дамп базы данных с помощью \texttt{pg\_dump}
+    \item Целостность копии проверяется по контрольной сумме
+    \item Копии старше 14 дней автоматически удаляются
+    \item Сейчас копии хранятся на рабочем сервере
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Тестирование}
+  \begin{itemize}
+    \item Добавлены backend-тесты на NUnit:
+      создание администратора, смена пароля, выдача и отзыв доступа,
+      проверка защищённых endpoints
+    \item Добавлены сквозные сценарии Playwright:
+      запрос и подтверждение обычного доступа, активация доверенной ссылки,
+      вход без подтверждения и блокировка после отзыва
+    \item CD проверен в окружении, повторяющем состав production
+      \begin{itemize}
+        \item поздняя ошибка после изменения базы, API и frontend
+          завершилась полным откатом
+        \item обычный выпуск завершился активацией новой версии
+          и успешной liveness-проверкой
+      \end{itemize}
+    \item На проде успешно выполнены развёртывание и первый ежедневный бэкап
+    \item Вручную проверены доступ, оценки и генерация документов
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Результаты}
+  \begin{itemize}
+    \item Реализованы создание администратора и безопасная смена пароля
+    \item Добавлены подтверждаемый и доверенный доступ членов комиссии
+    \item Подготовлены версионированные SQL-миграции
+    \item Реализован CD для API, frontend и базы данных
+    \item Проверен полный откат после поздней ошибки развёртывания
+    \item CD запущен на проде, настроены ежедневные бэкапы с хранением 14 дней
+  \end{itemize}
+
+  \vfill
+  \footnotesize
+  Репозиторий: \url{https://github.com/yurii-litvinov/PracticeGrading}\\
+  Изменения безопасности:
+  \href{https://github.com/yurii-litvinov/PracticeGrading/pull/13}{PR 13}
+\end{frame}
+
+\end{document}
